@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#6c2bd9"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>Ayub Market</title>
+<style>
+:root{--bg:#f4f4f8;--cd:#fff;--tx:#1b1b24;--mu:#777;--pr:#6c2bd9;--bd:#e4e4ec}
+@media(prefers-color-scheme:dark){:root{--bg:#121218;--cd:#1c1c26;--tx:#f1f1f6;--mu:#9a9aad;--bd:#2d2d3b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,sans-serif;padding-bottom:80px}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#6c2bd9,#8b4df0);padding:calc(10px + env(safe-area-inset-top)) 12px 12px;color:#fff}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}h1{font-size:20px;margin:0}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;background:var(--pr);color:#fff;font-size:14px}
+.btn.w{background:#fff;color:var(--pr)}.btn.g{background:var(--bd);color:var(--tx)}.btn.r{background:#d62d4a}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--cd);color:var(--tx);font-size:16px;margin-top:8px}
+header input{border:0}
+.ban{margin:10px 12px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#ff7a18,#ff3d6e);color:#fff;font-size:14px;line-height:1.4}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 12px}.chip{flex:none;padding:7px 14px;border-radius:20px;background:var(--cd);border:1px solid var(--bd);font-size:14px}.chip.on{background:var(--pr);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 12px}@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{background:var(--cd);border-radius:14px;overflow:hidden;border:1px solid var(--bd);display:flex;flex-direction:column}
+.card img,.ph{width:100%;aspect-ratio:1;object-fit:cover;background:var(--bd);display:flex;align-items:center;justify-content:center;font-size:40px}
+.in{padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px}.nm{font-size:14px;max-height:2.6em;overflow:hidden}.pz{font-weight:700}
+.card .btn{padding:8px;font-size:13px}.empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:50px 10px}
+.sh{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end}.sh.on{display:flex}
+.pan{background:var(--bg);width:100%;max-height:90%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+#lg{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+#lg .box{width:100%;max-width:380px}#lg h2{margin:0 0 4px}.mu{color:var(--mu);font-size:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--cd);border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;z-index:6}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;z-index:50;opacity:0;transition:opacity .2s;max-width:88%;text-align:center;font-size:14px;pointer-events:none}
+</style></head><body>
+<div id="lg"><div class="box">
+  <h2>🔥 Ayub Market</h2><p class="mu" id="lh">Kirish uchun telefon raqamingizni kiriting. Kod Telegram'ga keladi.</p>
+  <input id="ph" placeholder="+998 90 123 45 67" inputmode="tel" autocomplete="tel">
+  <input id="cd" placeholder="6 xonali kod" inputmode="numeric" maxlength="6" style="display:none">
+  <p id="lm" class="mu"></p>
+  <button class="btn" id="lb" style="width:100%;margin-top:6px">Kod olish</button>
+</div></div>
+
+<header><div class="top"><h1>🔥 Ayub Market</h1><span><button class="btn w" id="addBtn" style="display:none">+ Mahsulot</button> <button class="btn w" id="reqBtn" style="display:none">Sotuvchi bo'lish</button> <button class="btn w" id="out">Chiqish</button></span></div>
+<input id="q" placeholder="Mahsulot qidirish..."></header>
+<div class="ban">🚚 <b>Onlayn yetkazib berish xizmati!</b><br>199 000 so'mdan ortiq xarid qilgan mijozlarga uygacha yetkazib berish xizmati bor</div>
+<div class="chips" id="chips"></div><div class="grid" id="grid"></div>
+<div class="bar"><div><div class="mu">Savatda</div><b id="tot">0 so'm</b></div><button class="btn" id="cartBtn">🛒 Savat (<span id="cnt">0</span>)</button></div>
+
+<div class="sh" id="cartS"><div class="pan"><h3 style="margin:0 0 8px">Savat</h3><div id="cartL"></div><p><b id="cartT"></b></p>
+<input id="ctel" placeholder="Telefon raqamingiz" inputmode="tel"><input id="cad" placeholder="Manzil">
+<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="ord" style="flex:1">Buyurtma berish</button><button class="btn g" data-x>Yopish</button></div></div></div>
+
+<div class="sh" id="addS"><div class="pan"><h3 style="margin:0">Yangi mahsulot</h3>
+<input id="n" placeholder="Nomi"><input id="p" placeholder="Narxi (so'm)" inputmode="numeric"><input id="c" placeholder="Kategoriya (masalan: Telefon)">
+<label class="btn g" style="display:block;text-align:center;margin-top:8px">📷 Galereyadan rasm tanlash<input id="f" type="file" accept="image/*" hidden></label>
+<img id="pv" alt="" style="display:none;width:100px;height:100px;object-fit:cover;border-radius:10px;margin-top:8px">
+<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="save" style="flex:1">Saqlash</button><button class="btn g" data-x>Bekor</button></div></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n).toLocaleString('ru-RU')+" so'm";
+const toast=m=>{const t=$('ts')||Object.assign(document.body.appendChild(document.createElement('div')),{id:'ts',className:'toast'});t.textContent=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,2800)};
+let tok='',items=[],owner=false,canPost=false,myPh='',cat='Hammasi',cart={},imgBlob=null;
+try{tok=localStorage.getItem('am_t')||'';cart=JSON.parse(localStorage.getItem('am_c')||'{}')}catch(e){}
+const sv=()=>{try{localStorage.setItem('am_c',JSON.stringify(cart))}catch(e){}};
+async function api(path,body){
+  try{const r=await fetch(path,{method:body?'POST':'GET',headers:Object.assign({'Content-Type':'application/json'},tok?{Authorization:'Bearer '+tok}:{}),body:body?JSON.stringify(body):undefined});
+  let j={};try{j=await r.json()}catch(e){}return{s:r.status,j}}catch(e){return{s:0,j:{error:"Internet yo'q yoki server uyg'onmoqda, 1 daqiqadan so'ng qayta urining"}}}
+}
+function showLogin(){$('lg').style.display='flex'}
+async function load(){
+  const r=await api('/products');
+  if(r.s===401){tok='';try{localStorage.removeItem('am_t')}catch(e){}showLogin();return}
+  if(!r.j.ok){toast(r.j.error||'Xatolik');return}
+  $('lg').style.display='none';items=r.j.items||[];owner=!!r.j.owner;canPost=!!r.j.canPost;myPh=r.j.phone||'';$('addBtn').style.display=canPost?'':'none';$('reqBtn').style.display=canPost?'none':'';render();
+}
+let step=1;
+$('lb').onclick=async()=>{
+  const phone=$('ph').value.trim();if(phone.replace(/\D/g,'').length<9)return toast('Telefon raqamni to\'g\'ri kiriting');
+  $('lb').disabled=true;$('lm').innerHTML='';
+  if(step===1){
+    const r=await api('/login',{phone});
+    if(r.j.need_bot){$('lm').innerHTML='Avval Telegram\'da <b><a href="'+esc(r.j.link)+'" style="color:var(--pr)">botni oching</a></b>, Start bosing va "Raqamni yuborish" tugmasini bosing. Keyin shu yerga qaytib, yana urining.'}
+    else if(r.j.ok){step=2;$('cd').style.display='block';$('lb').textContent='Kirish';$('lm').textContent='Kod Telegram botga yuborildi.'}
+    else $('lm').textContent=r.j.error||'Xatolik';
+  }else{
+    const r=await api('/verify',{phone,code:$('cd').value.trim()});
+    if(r.j.ok){tok=r.j.token;try{localStorage.setItem('am_t',tok)}catch(e){}step=1;$('cd').value='';await load()}
+    else $('lm').textContent=r.j.error||'Xatolik';
+  }
+  $('lb').disabled=false;
+};
+$('out').onclick=()=>{tok='';try{localStorage.removeItem('am_t')}catch(e){}location.reload()};
+
+function render(){
+  const cats=['Hammasi',...new Set(items.map(i=>i.cat).filter(Boolean))];
+  $('chips').innerHTML=cats.map(c=>`<div class="chip ${c===cat?'on':''}" data-c="${esc(c)}">${esc(c)}</div>`).join('');
+  const q=$('q').value.toLowerCase();
+  const l=items.filter(i=>(cat==='Hammasi'||i.cat===cat)&&i.name.toLowerCase().includes(q));
+  $('grid').innerHTML=l.length?l.map(i=>`<div class="card">${i.img?`<img src="${esc(i.img)}" alt="">`:'<div class="ph">📦</div>'}<div class="in"><div class="nm">${esc(i.name)}</div><div class="pz">${fmt(i.price)}</div><button class="btn" data-a="${esc(i.id)}">Savatga</button>${(owner||(canPost&&i.by===myPh))?`<button class="btn r" data-d="${esc(i.id)}">O'chirish</button>`:''}</div></div>`).join(''):'<div class="empty">Hozircha mahsulot yo\'q'+(canPost?'.<br>“+ Mahsulot” tugmasi orqali qo\'shing.':'.')+'</div>';
+  cartUI();
+}
+function cartUI(){
+  let t=0,c=0;const ids=Object.keys(cart).filter(id=>items.find(i=>i.id===id));
+  $('cartL').innerHTML=ids.length?ids.map(id=>{const i=items.find(x=>x.id===id),n=cart[id];t+=i.price*n;c+=n;return`<div class="row"><span>${esc(i.name)}<br><span class="mu">${fmt(i.price)}</span></span><span><button class="btn g" data-m="${esc(id)}">−</button> <b>${n}</b> <button class="btn g" data-p="${esc(id)}">+</button></span></div>`}).join(''):'<p class="mu">Savat bo\'sh</p>';
+  $('tot').textContent=fmt(t);$('cnt').textContent=c;
+  $('cartT').textContent='Jami: '+fmt(t)+(t>199000?' · 🚚 Yetkazib berish bor':(t>0?' · Yetkazib berish uchun xarid 199 000 so\'mdan oshishi kerak':''));
+}
+document.addEventListener('click',async e=>{
+  const t=e.target,d=t.dataset||{};
+  if(d.c){cat=d.c;render()}
+  if(d.a){cart[d.a]=(cart[d.a]||0)+1;sv();cartUI()}
+  if(d.p){cart[d.p]++;sv();cartUI()}
+  if(d.m){if(--cart[d.m]<=0)delete cart[d.m];sv();cartUI()}
+  if(d.d){if(d.k!=='1'){t.dataset.k='1';t.textContent="Aniq o'chirilsinmi?";setTimeout(()=>{t.dataset.k='';t.textContent="O'chirish"},3000)}
+    else{const r=await api('/products/delete',{id:d.d});toast(r.j.ok?"O'chirildi":(r.j.error||'Xatolik'));if(r.j.ok)load()}}
+  if('x' in d||t.classList.contains('sh'))document.querySelectorAll('.sh').forEach(s=>s.classList.remove('on'));
+});
+$('q').oninput=render;
+$('cartBtn').onclick=()=>$('cartS').classList.add('on');
+$('addBtn').onclick=()=>$('addS').classList.add('on');
+$('reqBtn').onclick=async()=>{const r=await api('/request-seller',{});toast(r.j.ok?(r.j.already?'Sizda ruxsat bor':"So'rov egasiga yuborildi. Javobini kuting."):(r.j.error||'Xatolik'))};
+$('ord').onclick=()=>{
+  const ids=Object.keys(cart).filter(id=>items.find(i=>i.id===id));if(!ids.length)return toast("Savat bo'sh");
+  if(!$('ctel').value.trim())return toast('Telefon raqamini kiriting');
+  let t=0;const L=ids.map(id=>{const i=items.find(x=>x.id===id);t+=i.price*cart[id];return'• '+i.name+' × '+cart[id]}).join('\n');
+  const txt='Ayub Market buyurtma\n'+L+'\nJami: '+fmt(t)+'\nYetkazib berish: '+(t>199000?'bor':'yoq (199 000 dan kam)')+'\nTel: '+$('ctel').value+'\nManzil: '+$('cad').value;
+  (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).catch(()=>{});toast('Buyurtma matni nusxalandi. Sotuvchiga yuboring.');
+};
+$('f').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{const bm=await createImageBitmap(f),s=Math.min(1,600/Math.max(bm.width,bm.height)),c=document.createElement('canvas');
+  c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+  imgBlob=await new Promise(r=>c.toBlob(r,'image/jpeg',.75));$('pv').src=URL.createObjectURL(imgBlob);$('pv').style.display='block'}catch(x){toast("Rasmni o'qib bo'lmadi")}};
+$('save').onclick=async()=>{
+  const name=$('n').value.trim(),price=parseInt($('p').value.replace(/\D/g,''),10);if(!name||!price)return toast('Nomi va narxini kiriting');
+  let img='';if(imgBlob)img=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(imgBlob)});
+  const r=await api('/products',{name,price,cat:$('c').value.trim(),img});
+  if(r.j.ok){['n','p','c'].forEach(k=>$(k).value='');imgBlob=null;$('f').value='';$('pv').style.display='none';$('addS').classList.remove('on');toast("Qo'shildi");load()}
+  else toast(r.j.error||'Xatolik');
+};
+tok?load():showLogin();
+</script></body></html>
