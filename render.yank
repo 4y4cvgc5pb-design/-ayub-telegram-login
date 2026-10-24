@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ayub-telegram-login
+    runtime: node
+    plan: free
+    buildCommand: "true"
+    startCommand: node server.js
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: SECRET
+        generateValue: true
