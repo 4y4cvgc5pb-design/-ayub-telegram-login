@@ -270,4 +270,4 @@ function serve() {
 }
 
 loadDb().then(() => { poll(); serve(); }).catch(e => { console.error(e.message); process.exit(1); });
-github.com/4y4cvgc5pb-design/-ayub-telegram-login/edit/main/server.js
+setInterval(() => { if (USE_SB) sb("?select=key&limit=1").then(r => console.log("Baza faol:", r.status)).catch(e => console.error("Baza xatosi", e.message)); }, 6 * 3600 * 1000);
