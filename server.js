@@ -1,4 +1,4 @@
-require('fs'), crypto = require('crypto');
+const http = require('http'), fs = require('fs'), crypto = require('crypto');
 
 process.on('unhandledRejection', e => console.error('Xato:', e && e.message));
 const TOKEN = process.env.BOT_TOKEN, BOT = process.env.BOT_USERNAME;
@@ -270,4 +270,5 @@ function serve() {
 }
 
 loadDb().then(() => { poll(); serve(); }).catch(e => { console.error(e.message); process.exit(1); });
+
 setInterval(() => { if (USE_SB) sb("?select=key&limit=1").then(r => console.log("Baza faol:", r.status)).catch(e => console.error("Baza xatosi", e.message)); }, 6 * 3600 * 1000);
