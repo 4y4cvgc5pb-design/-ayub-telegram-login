@@ -1,5 +1,6 @@
 const http = require('http'), fs = require('fs'), crypto = require('crypto');
 
+process.on('unhandledRejection', e => console.error('Xato:', e && e.message));
 const TOKEN = process.env.BOT_TOKEN, BOT = process.env.BOT_USERNAME;
 const SECRET = process.env.SECRET || crypto.randomBytes(32).toString('hex');
 if (!TOKEN || !BOT) { console.error('BOT_TOKEN va BOT_USERNAME kerak'); process.exit(1); }
@@ -7,8 +8,9 @@ if (!TOKEN || !BOT) { console.error('BOT_TOKEN va BOT_USERNAME kerak'); process.
 const API = `https://api.telegram.org/bot${TOKEN}/`;
 const SB_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, ''), SB_KEY = process.env.SUPABASE_KEY || '';
 const USE_SB = !!(SB_URL && SB_KEY);
-let db = { chats: {}, products: [], sellers: {} };
-const codes = {}, lastReq = {};
+let db = { chats: {}, products: [], sellers: {}, orders: [] };
+const codes = {}, lastReq = {}, ordRate = {};
+const FREE_MIN = 199000;
 
 const norm = p => { const d = String(p || '').replace(/\D/g, ''); return d.length === 9 ? '998' + d : d; };
 const OWNER = norm(process.env.OWNER_PHONE);
@@ -34,6 +36,7 @@ async function del(key) {
 }
 const saveMeta = () => USE_SB ? put('meta', { chats: db.chats, sellers: db.sellers }) : fileSave();
 const saveProduct = p => USE_SB ? put('p:' + p.id, p) : fileSave();
+const saveOrder = o => USE_SB ? put('o:' + o.id, o) : fileSave();
 const removeProduct = id => USE_SB ? del('p:' + id) : fileSave();
 async function loadDb() {
   if (!USE_SB) { try { db = Object.assign(db, JSON.parse(fs.readFileSync('db.json'))); } catch {} console.warn('SUPABASE sozlanmagan: vaqtinchalik rejim'); return; }
@@ -42,16 +45,43 @@ async function loadDb() {
   for (const row of await r.json()) {
     if (row.key === 'meta') { db.chats = row.value.chats || {}; db.sellers = row.value.sellers || {}; }
     else if (row.key.startsWith('p:')) db.products.push(row.value);
+    else if (row.key.startsWith('o:')) db.orders.push(row.value);
   }
   db.products.sort((a, b) => String(b.id).localeCompare(String(a.id)));
-  console.log('Baza yuklandi: mahsulot', db.products.length);
+  db.orders.sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  console.log('Baza yuklandi: mahsulot', db.products.length, 'buyurtma', db.orders.length);
+}
+
+// ---- Buyurtmalar ----
+const ST = { new: '🆕 Yangi', assembling: "🧑‍🍳 Yig'ilmoqda", onway: "🚚 Yo'lda", done: '✅ Yetkazildi', cancelled: '❌ Bekor qilindi' };
+const num = o => '#' + o.id.slice(-5);
+const money = n => Number(n).toLocaleString('ru-RU') + " so'm";
+const orderText = o => o.kind === 'request'
+  ? `${ST[o.status]} ${num(o)} — 📝 Yozma so'rov\n${o.text}\n📍 ${o.address}\n📞 ${o.tel} (+${o.phone})`
+  : `${ST[o.status]} ${num(o)}\n` + o.items.map(i => `• ${i.name} × ${i.qty}`).join('\n') + `\nJami: ${money(o.total)}\n` +
+  (o.type === 'delivery' ? `📍 ${o.address}\n🕐 ${o.slot === 'express' ? 'Tezkor' : o.slot}` : '🏪 Olib ketish') + `\n📞 ${o.tel} (+${o.phone})` + (o.comment ? `\n💬 ${o.comment}` : '');
+const orderKb = o => ({ inline_keyboard: [
+  [{ text: "🧑‍🍳 Yig'ilmoqda", callback_data: 'st:' + o.id + ':assembling' }, { text: "🚚 Yo'lda", callback_data: 'st:' + o.id + ':onway' }],
+  [{ text: '✅ Yetkazildi', callback_data: 'st:' + o.id + ':done' }, { text: '❌ Bekor', callback_data: 'st:' + o.id + ':cancelled' }]] });
+const notifyOwner = (o, extra) => { const oc = OWNER && db.chats[OWNER]; if (oc) tg('sendMessage', { chat_id: oc, text: (extra ? extra + '\n' : '') + orderText(o), reply_markup: orderKb(o) }); };
+async function setStatus(o, st) {
+  o.status = st; await saveOrder(o);
+  if (db.chats[o.phone]) tg('sendMessage', { chat_id: db.chats[o.phone], text: `Buyurtma ${num(o)}: ${ST[st]}` });
 }
 
 async function onCb(q) {
-  const [a, ph] = String(q.data || '').split(':');
+  const parts = String(q.data || '').split(':');
+  const [a, ph] = parts;
   if (!isOwnerId(q.from.id)) return tg('answerCallbackQuery', { callback_query_id: q.id, text: "Ruxsat yo'q" });
   const e = text => tg('editMessageText', { chat_id: q.message.chat.id, message_id: q.message.message_id, text });
-  if (a === 'ok') {
+  if (a === 'st') {
+    const o = db.orders.find(x => x.id === ph), st = parts[2];
+    if (!o || !ST[st] || st === 'new') return tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Topilmadi' });
+    if (o.status === 'done' || o.status === 'cancelled') return tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Buyurtma yakunlangan' });
+    await setStatus(o, st);
+    const fin = st === 'done' || st === 'cancelled';
+    await tg('editMessageText', { chat_id: q.message.chat.id, message_id: q.message.message_id, text: orderText(o), reply_markup: fin ? { inline_keyboard: [] } : orderKb(o) });
+  } else if (a === 'ok') {
     db.sellers[ph] = true; await saveMeta(); await e('✅ Ruxsat berildi: +' + ph);
     if (db.chats[ph]) tg('sendMessage', { chat_id: db.chats[ph], text: "✅ Sizga sotuvchi bo'lishga ruxsat berildi. Saytni yangilang." });
   } else if (a === 'no') {
@@ -116,6 +146,13 @@ function serve() {
       let html; try { html = fs.readFileSync('index.html'); } catch { res.writeHead(404); return res.end('index.html topilmadi'); }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html);
     }
+    if (req.method === 'GET' && req.url.startsWith('/img/')) {
+      const p = db.products.find(x => x.id === req.url.slice(5).split('?')[0]);
+      const m = p && /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(p.img || '');
+      if (!m) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': m[1], 'Cache-Control': 'public, max-age=86400' });
+      return res.end(Buffer.from(m[2], 'base64'));
+    }
     let b = ''; req.on('data', c => { b += c; if (b.length > 700000) req.destroy(); });
     req.on('end', async () => {
       let d = {}; try { d = JSON.parse(b || '{}'); } catch {}
@@ -145,7 +182,8 @@ function serve() {
 
       if (req.url === '/products' && req.method === 'GET') {
         if (!me) return send(res, 401, { ok: false });
-        return send(res, 200, { ok: true, owner: me.ph === OWNER, canPost: canPost(me.ph), phone: me.ph, items: db.products });
+        return send(res, 200, { ok: true, owner: me.ph === OWNER, canPost: canPost(me.ph), phone: me.ph,
+          items: db.products.map(p => ({ id: p.id, name: p.name, price: p.price, cat: p.cat, by: p.by, desc: p.desc || '', img: p.img ? '/img/' + p.id : '' })) });
       }
       if (req.url === '/request-seller') {
         if (!me) return send(res, 401, { ok: false });
@@ -162,10 +200,64 @@ function serve() {
         if (!me || !canPost(me.ph)) return send(res, 403, { ok: false, error: "Mahsulot qo'shish uchun egasidan ruxsat kerak" });
         const name = String(d.name || '').slice(0, 100), price = parseInt(d.price, 10);
         if (!name || !(price > 0)) return send(res, 400, { ok: false, error: 'Nom va narx kerak' });
-        const p = { id: 'p' + Date.now(), name, price, by: me.ph, cat: String(d.cat || '').slice(0, 30), img: String(d.img || '').slice(0, 400000) };
+        const p = { id: 'p' + Date.now(), name, price, by: me.ph, cat: String(d.cat || '').slice(0, 30), desc: String(d.desc || '').slice(0, 300), img: String(d.img || '').slice(0, 400000) };
         db.products.unshift(p); await saveProduct(p);
         return send(res, 200, { ok: true });
       }
+
+      if (req.url === '/orders' && req.method === 'POST') {
+        if (!me) return send(res, 401, { ok: false });
+        if ((ordRate[me.ph] || []).filter(t => Date.now() - t < 3600000).length >= 5) return send(res, 429, { ok: false, error: "Juda ko'p buyurtma. Keyinroq urining" });
+        const items = []; let total = 0;
+        for (const it of (Array.isArray(d.items) ? d.items : []).slice(0, 50)) {
+          const p = db.products.find(x => x.id === it.id), q = parseInt(it.qty, 10);
+          if (!p || !(q > 0 && q <= 99)) continue;
+          items.push({ id: p.id, name: p.name, price: p.price, qty: q }); total += p.price * q;
+        }
+        if (!items.length) return send(res, 400, { ok: false, error: "Savat bo'sh" });
+        const type = d.type === 'pickup' ? 'pickup' : 'delivery';
+        const address = String(d.address || '').trim().slice(0, 200);
+        if (type === 'delivery') {
+          if (total <= FREE_MIN) return send(res, 400, { ok: false, error: "Yetkazib berish uchun xarid 199 000 so'mdan oshishi kerak" });
+          if (!address) return send(res, 400, { ok: false, error: 'Manzilni kiriting' });
+        }
+        const slot = /^(bugun|ertaga) \d\d:\d\d-\d\d:\d\d$/.test(d.slot || '') ? d.slot : 'express';
+        const tel = String(d.tel || '').replace(/[^\d+]/g, '').slice(0, 16) || '+' + me.ph;
+        const o = { id: 'o' + Date.now(), phone: me.ph, tel, items, total, type, address, slot, comment: String(d.comment || '').trim().slice(0, 200), status: 'new', at: Date.now() };
+        db.orders.unshift(o); (ordRate[me.ph] = ordRate[me.ph] || []).push(Date.now());
+        await saveOrder(o); notifyOwner(o);
+        return send(res, 200, { ok: true, id: o.id, num: num(o) });
+      }
+      if (req.url === '/requests' && req.method === 'POST') {
+        if (!me) return send(res, 401, { ok: false });
+        if ((ordRate[me.ph] || []).filter(t => Date.now() - t < 3600000).length >= 5) return send(res, 429, { ok: false, error: "Juda ko'p so'rov. Keyinroq urining" });
+        const text = String(d.text || '').trim().slice(0, 600), address = String(d.address || '').trim().slice(0, 200);
+        if (text.length < 3) return send(res, 400, { ok: false, error: 'Kerakli narsalarni yozing' });
+        if (!address) return send(res, 400, { ok: false, error: 'Manzilni kiriting' });
+        const tel = String(d.tel || '').replace(/[^\d+]/g, '').slice(0, 16) || '+' + me.ph;
+        const o = { id: 'o' + Date.now(), kind: 'request', phone: me.ph, tel, items: [], total: 0, type: 'delivery', address, slot: 'express', text, comment: '', status: 'new', at: Date.now() };
+        db.orders.unshift(o); (ordRate[me.ph] = ordRate[me.ph] || []).push(Date.now());
+        await saveOrder(o); notifyOwner(o);
+        return send(res, 200, { ok: true, id: o.id, num: num(o) });
+      }
+      if (req.url === '/orders' && req.method === 'GET') {
+        if (!me) return send(res, 401, { ok: false });
+        const own = me.ph === OWNER;
+        return send(res, 200, { ok: true, owner: own, items: db.orders.filter(o => own || o.phone === me.ph).slice(0, 100) });
+      }
+      if (req.url === '/orders/status') {
+        if (!me || me.ph !== OWNER) return send(res, 403, { ok: false });
+        const o = db.orders.find(x => x.id === d.id);
+        if (!o || !ST[d.status] || d.status === 'new' || o.status === 'done' || o.status === 'cancelled') return send(res, 400, { ok: false, error: "Bo'lmaydi" });
+        await setStatus(o, d.status); return send(res, 200, { ok: true });
+      }
+      if (req.url === '/orders/cancel') {
+        if (!me) return send(res, 401, { ok: false });
+        const o = db.orders.find(x => x.id === d.id && x.phone === me.ph);
+        if (!o || o.status !== 'new') return send(res, 400, { ok: false, error: "Buyurtmani endi bekor qilib bo'lmaydi" });
+        await setStatus(o, 'cancelled'); notifyOwner(o, '⚠️ Mijoz bekor qildi'); return send(res, 200, { ok: true });
+      }
+
       if (req.url === '/products/delete') {
         if (!me || !canPost(me.ph)) return send(res, 403, { ok: false });
         const p = db.products.find(x => x.id === d.id);
