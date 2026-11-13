@@ -11,6 +11,26 @@ const USE_SB = !!(SB_URL && SB_KEY);
 let db = { chats: {}, products: [], sellers: {}, orders: [] };
 const codes = {}, lastReq = {}, ordRate = {};
 const FREE_MIN = 199000;
+const inUz = (la, ln) => la > 36.5 && la < 46 && ln > 55 && ln < 74.5;
+const parseGeo = d => { const la = Number(d.lat), ln = Number(d.lng); return isFinite(la) && isFinite(ln) && inUz(la, ln) ? { lat: +la.toFixed(6), lng: +ln.toFixed(6) } : null; };
+const mapLinks = g => `🗺 Yandex: https://yandex.com/maps/?pt=${g.lng},${g.lat}&z=17&l=map\n🗺 Google: https://maps.google.com/?q=${g.lat},${g.lng}`;
+const geoCache = new Map(); let geoLast = 0;
+async function reverseGeo(la, ln) {
+  const k = la.toFixed(4) + ',' + ln.toFixed(4);
+  if (geoCache.has(k)) return geoCache.get(k);
+  const wait = geoLast + 1100 - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  geoLast = Date.now();
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 6000);
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=uz,ru&lat=${la}&lon=${ln}`,
+      { headers: { 'User-Agent': 'AyubMarket/1.0 (https://t.me/' + BOT + ')' }, signal: ac.signal });
+    const j = await r.json(), a = j.address || {};
+    const parts = [a.road, a.house_number, a.neighbourhood || a.suburb || a.quarter, a.city_district || a.county, a.city || a.town || a.village || a.state].filter(Boolean);
+    const out = (parts.length ? parts.join(', ') : (j.display_name || '')).slice(0, 180);
+    if (geoCache.size > 300) geoCache.clear();
+    geoCache.set(k, out); return out;
+  } finally { clearTimeout(t); }
+}
 
 const norm = p => { const d = String(p || '').replace(/\D/g, ''); return d.length === 9 ? '998' + d : d; };
 const OWNER = norm(process.env.OWNER_PHONE);
@@ -56,14 +76,19 @@ async function loadDb() {
 const ST = { new: '🆕 Yangi', assembling: "🧑‍🍳 Yig'ilmoqda", onway: "🚚 Yo'lda", done: '✅ Yetkazildi', cancelled: '❌ Bekor qilindi' };
 const num = o => '#' + o.id.slice(-5);
 const money = n => Number(n).toLocaleString('ru-RU') + " so'm";
-const orderText = o => o.kind === 'request'
+const orderBase = o => o.kind === 'request'
   ? `${ST[o.status]} ${num(o)} — 📝 Yozma so'rov\n${o.text}\n📍 ${o.address}\n📞 ${o.tel} (+${o.phone})`
   : `${ST[o.status]} ${num(o)}\n` + o.items.map(i => `• ${i.name} × ${i.qty}`).join('\n') + `\nJami: ${money(o.total)}\n` +
   (o.type === 'delivery' ? `📍 ${o.address}\n🕐 ${o.slot === 'express' ? 'Tezkor' : o.slot}` : '🏪 Olib ketish') + `\n📞 ${o.tel} (+${o.phone})` + (o.comment ? `\n💬 ${o.comment}` : '');
+const orderText = o => orderBase(o) + (o.quote ? `\n💰 ${money(o.quote.amount)}` + (o.quote.note ? ' — ' + o.quote.note : '') : '') + (o.geo ? '\n' + mapLinks(o.geo) : '');
 const orderKb = o => ({ inline_keyboard: [
   [{ text: "🧑‍🍳 Yig'ilmoqda", callback_data: 'st:' + o.id + ':assembling' }, { text: "🚚 Yo'lda", callback_data: 'st:' + o.id + ':onway' }],
   [{ text: '✅ Yetkazildi', callback_data: 'st:' + o.id + ':done' }, { text: '❌ Bekor', callback_data: 'st:' + o.id + ':cancelled' }]] });
-const notifyOwner = (o, extra) => { const oc = OWNER && db.chats[OWNER]; if (oc) tg('sendMessage', { chat_id: oc, text: (extra ? extra + '\n' : '') + orderText(o), reply_markup: orderKb(o) }); };
+const notifyOwner = (o, extra) => {
+  const oc = OWNER && db.chats[OWNER]; if (!oc) return;
+  tg('sendMessage', { chat_id: oc, text: (extra ? extra + '\n' : '') + orderText(o), reply_markup: orderKb(o) });
+  if (o.geo) tg('sendLocation', { chat_id: oc, latitude: o.geo.lat, longitude: o.geo.lng });
+};
 async function setStatus(o, st) {
   o.status = st; await saveOrder(o);
   if (db.chats[o.phone]) tg('sendMessage', { chat_id: db.chats[o.phone], text: `Buyurtma ${num(o)}: ${ST[st]}` });
@@ -153,6 +178,13 @@ function serve() {
       res.writeHead(200, { 'Content-Type': m[1], 'Cache-Control': 'public, max-age=86400' });
       return res.end(Buffer.from(m[2], 'base64'));
     }
+    if (req.method === 'GET' && req.url.startsWith('/geo?')) {
+      if (!auth(req)) return send(res, 401, { ok: false });
+      const q = new URLSearchParams(req.url.slice(5)), la = Number(q.get('lat')), ln = Number(q.get('lng'));
+      if (!(isFinite(la) && isFinite(ln) && inUz(la, ln))) return send(res, 400, { ok: false, error: "Joy O'zbekistondan tashqarida" });
+      reverseGeo(la, ln).then(a => send(res, 200, { ok: true, address: a })).catch(() => send(res, 200, { ok: true, address: '' }));
+      return;
+    }
     let b = ''; req.on('data', c => { b += c; if (b.length > 700000) req.destroy(); });
     req.on('end', async () => {
       let d = {}; try { d = JSON.parse(b || '{}'); } catch {}
@@ -216,14 +248,14 @@ function serve() {
         }
         if (!items.length) return send(res, 400, { ok: false, error: "Savat bo'sh" });
         const type = d.type === 'pickup' ? 'pickup' : 'delivery';
-        const address = String(d.address || '').trim().slice(0, 200);
+        const address = String(d.address || '').trim().slice(0, 200), geo = parseGeo(d);
         if (type === 'delivery') {
           if (total <= FREE_MIN) return send(res, 400, { ok: false, error: "Yetkazib berish uchun xarid 199 000 so'mdan oshishi kerak" });
-          if (!address) return send(res, 400, { ok: false, error: 'Manzilni kiriting' });
+          if (!address && !geo) return send(res, 400, { ok: false, error: 'Manzilni kiriting yoki xaritadan tanlang' });
         }
         const slot = /^(bugun|ertaga) \d\d:\d\d-\d\d:\d\d$/.test(d.slot || '') ? d.slot : 'express';
         const tel = String(d.tel || '').replace(/[^\d+]/g, '').slice(0, 16) || '+' + me.ph;
-        const o = { id: 'o' + Date.now(), phone: me.ph, tel, items, total, type, address, slot, comment: String(d.comment || '').trim().slice(0, 200), status: 'new', at: Date.now() };
+        const o = { id: 'o' + Date.now(), phone: me.ph, tel, items, total, type, address: address || (geo ? 'Xaritadagi nuqta' : ''), geo, slot, comment: String(d.comment || '').trim().slice(0, 200), status: 'new', at: Date.now() };
         db.orders.unshift(o); (ordRate[me.ph] = ordRate[me.ph] || []).push(Date.now());
         await saveOrder(o); notifyOwner(o);
         return send(res, 200, { ok: true, id: o.id, num: num(o) });
@@ -231,11 +263,11 @@ function serve() {
       if (req.url === '/requests' && req.method === 'POST') {
         if (!me) return send(res, 401, { ok: false });
         if ((ordRate[me.ph] || []).filter(t => Date.now() - t < 3600000).length >= 5) return send(res, 429, { ok: false, error: "Juda ko'p so'rov. Keyinroq urining" });
-        const text = String(d.text || '').trim().slice(0, 600), address = String(d.address || '').trim().slice(0, 200);
+        const text = String(d.text || '').trim().slice(0, 600), address = String(d.address || '').trim().slice(0, 200), geo = parseGeo(d);
         if (text.length < 3) return send(res, 400, { ok: false, error: 'Kerakli narsalarni yozing' });
-        if (!address) return send(res, 400, { ok: false, error: 'Manzilni kiriting' });
+        if (!address && !geo) return send(res, 400, { ok: false, error: 'Manzilni kiriting yoki xaritadan tanlang' });
         const tel = String(d.tel || '').replace(/[^\d+]/g, '').slice(0, 16) || '+' + me.ph;
-        const o = { id: 'o' + Date.now(), kind: 'request', phone: me.ph, tel, items: [], total: 0, type: 'delivery', address, slot: 'express', text, comment: '', status: 'new', at: Date.now() };
+        const o = { id: 'o' + Date.now(), kind: 'request', phone: me.ph, tel, items: [], total: 0, type: 'delivery', address: address || (geo ? 'Xaritadagi nuqta' : ''), geo, slot: 'express', text, comment: '', status: 'new', at: Date.now() };
         db.orders.unshift(o); (ordRate[me.ph] = ordRate[me.ph] || []).push(Date.now());
         await saveOrder(o); notifyOwner(o);
         return send(res, 200, { ok: true, id: o.id, num: num(o) });
@@ -250,6 +282,16 @@ function serve() {
         const o = db.orders.find(x => x.id === d.id);
         if (!o || !ST[d.status] || d.status === 'new' || o.status === 'done' || o.status === 'cancelled') return send(res, 400, { ok: false, error: "Bo'lmaydi" });
         await setStatus(o, d.status); return send(res, 200, { ok: true });
+      }
+      if (req.url === '/orders/quote') {
+        if (!me || me.ph !== OWNER) return send(res, 403, { ok: false });
+        const o = db.orders.find(x => x.id === d.id), amount = parseInt(d.amount, 10);
+        if (!o || o.status === 'cancelled' || !(amount >= 0 && amount <= 1e9)) return send(res, 400, { ok: false, error: "Summani to'g'ri kiriting" });
+        o.quote = { amount, note: String(d.note || '').trim().slice(0, 200), at: Date.now() };
+        if (o.kind === 'request') o.total = amount;
+        await saveOrder(o);
+        if (db.chats[o.phone]) tg('sendMessage', { chat_id: db.chats[o.phone], text: `💰 Buyurtma ${num(o)}: jami ${money(amount)}` + (o.quote.note ? '\n' + o.quote.note : '') });
+        return send(res, 200, { ok: true });
       }
       if (req.url === '/orders/cancel') {
         if (!me) return send(res, 401, { ok: false });
