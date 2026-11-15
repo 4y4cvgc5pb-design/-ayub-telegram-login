@@ -1,4 +1,4 @@
-const http = require('http'), fs = require('fs'), crypto = require('crypto');
+const http = require('http'), fs = require('fs'), crypto = require('crypto');require('./plugin.js');
 
 process.on('unhandledRejection', e => console.error('Xato:', e && e.message));
 const TOKEN = process.env.BOT_TOKEN, BOT = process.env.BOT_USERNAME;
