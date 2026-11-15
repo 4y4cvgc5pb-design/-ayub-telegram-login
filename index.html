@@ -43,6 +43,14 @@ nav button{flex:1;border:0;background:none;color:var(--mu);padding:8px 0 6px;fon
 .toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;z-index:50;opacity:0;transition:opacity .2s;max-width:88%;text-align:center;font-size:14px;pointer-events:none}
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.acts .btn{padding:8px 10px;font-size:12px}
 a{color:var(--pr)}
+#mapS .pan{padding:0;height:92%;display:flex;flex-direction:column;overflow:hidden}
+#mw{position:relative;flex:1;min-height:240px;background:#dfe3ea}
+#mp{position:absolute;inset:0;overflow:hidden;touch-action:none}
+#mp img{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none;-webkit-user-drag:none;user-select:none}
+#pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);font-size:36px;line-height:1;pointer-events:none;z-index:3;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
+.mz{position:absolute;right:10px;top:10px;z-index:4;display:flex;flex-direction:column;gap:8px}.mz .btn{width:44px;height:44px;padding:0;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#mat{position:absolute;left:6px;bottom:4px;font-size:10px;background:rgba(255,255,255,.85);color:#333;padding:1px 5px;border-radius:4px;z-index:4}
+.qi{margin:0!important;flex:1;min-width:100px;padding:8px!important;font-size:14px!important}
 </style></head><body>
 <div id="lg"><div class="bx">
   <h2>🔥 Ayub Market</h2><p class="mu" id="lh">Kirish uchun telefon raqamingizni kiriting. Kod Telegram'ga keladi.</p>
@@ -65,7 +73,7 @@ a{color:var(--pr)}
   <div class="box"><h3>📝 Kerakli narsalarni yozing</h3>
   <p class="mu">Uyda o'tirib, nimalar kerakligini oddiy matn bilan yozing. So'rovingiz to'g'ridan-to'g'ri sotuvchiga boradi, narx va vaqtni u siz bilan kelishadi.</p>
   <textarea id="rt" placeholder="Masalan: 2 kg olma, 1 ta non, 1 l sut, 10 ta tuxum" maxlength="600"></textarea>
-  <input id="ra" placeholder="Manzil (ko'cha, uy, mo'ljal)">
+  <input id="ra" placeholder="Manzil: ko'cha, uy, kvartira, mo'ljal"><div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn g" data-map="r" style="flex:1">🗺 Xaritadan tanlash</button><span class="mu" id="gr"></span></div>
   <input id="rp" placeholder="Bog'lanish uchun telefon" inputmode="tel">
   <button class="btn" id="rs" style="width:100%;margin-top:12px">Sotuvchiga yuborish</button></div>
 </section>
@@ -84,7 +92,7 @@ a{color:var(--pr)}
 <div class="sh" id="cartS"><div class="pan"><h3>Savat</h3><div id="cartL"></div><p><b id="cartT"></b></p>
   <div class="seg"><button data-t="delivery" id="tD" class="on">🚚 Yetkazib berish</button><button data-t="pickup" id="tP">🏪 Olib ketish</button></div>
   <p class="mu" id="dn" style="margin:6px 0 0"></p>
-  <div id="dBox"><select id="csl"></select><input id="cad" placeholder="Manzil (ko'cha, uy, mo'ljal)"></div>
+  <div id="dBox"><select id="csl"></select><input id="cad" placeholder="Manzil: ko'cha, uy, kvartira, mo'ljal"><div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn g" data-map="c" style="flex:1">🗺 Xaritadan tanlash</button><span class="mu" id="gc"></span></div></div>
   <input id="ctel" placeholder="Bog'lanish uchun telefon" inputmode="tel"><input id="ccm" placeholder="Izoh (ixtiyoriy)">
   <div style="display:flex;gap:8px;margin-top:12px"><button class="btn o" id="ord" style="flex:1">Buyurtma berish</button><button class="btn g" data-x>Yopish</button></div></div></div>
 
@@ -97,11 +105,21 @@ a{color:var(--pr)}
 <img id="pv" alt="" style="display:none;width:100px;height:100px;object-fit:cover;border-radius:10px;margin-top:8px">
 <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="save" style="flex:1">Saqlash</button><button class="btn g" data-x>Bekor</button></div></div></div>
 
+<div class="sh" id="mapS"><div class="pan">
+  <div style="padding:12px 14px"><b>📍 Yetkazib berish joyini tanlang</b><div class="mu">Xaritani suring yoki joyga bosing. Belgi turgan nuqtaga yetkaziladi.</div></div>
+  <div id="mw"><div id="mp"></div><div id="pin">📍</div>
+    <div class="mz"><button class="btn w" id="mz1">+</button><button class="btn w" id="mz2">−</button><button class="btn w" id="mloc">🎯</button></div>
+    <div id="mat">© OpenStreetMap</div></div>
+  <div style="padding:12px 14px"><div class="mu" id="mad" style="min-height:20px"></div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn o" id="mok" style="flex:1">Shu joyni tanlash</button><button class="btn g" id="mcn">Bekor</button></div></div>
+</div></div>
+
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n).toLocaleString('ru-RU')+" so'm";
 const FREE=199000;
+let geo={c:null,r:null},mapT='c';const MS={lat:41.3111,lng:69.2797,z:12,addr:''};
 const toast=m=>{const t=$('ts')||Object.assign(document.body.appendChild(document.createElement('div')),{id:'ts',className:'toast'});t.textContent=m;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,3000)};
 let tok='',items=[],orders=[],owner=false,canPost=false,myPh='',cat='Hammasi',cart={},view='home',imgBlob=null,curProd=null,ctype='delivery',rec=[];
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){return null}};
@@ -148,7 +166,7 @@ async function loadOrders(quiet){
   const r=await api('/orders');if(!r.j.ok)return;
   orders=r.j.items||[];const act=orders.filter(o=>o.status!=='done'&&o.status!=='cancelled').length;
   $('obd').hidden=!act;$('obd').textContent=act;
-  if(view==='ord')renderOrders();
+  if(view==='ord'&&!$('v-ord').contains(document.activeElement))renderOrders();
 }
 
 /* ---------- katalog ---------- */
@@ -194,11 +212,11 @@ document.querySelector('.seg').onclick=e=>{const b=e.target.closest('button');if
 $('ord').onclick=async()=>{
   const L=lines();if(!L.length)return toast("Savat bo'sh");
   const t=sum(),address=$('cad').value.trim();
-  if(ctype==='delivery'&&!address)return toast('Manzilni kiriting');
+  if(ctype==='delivery'&&!address&&!geo.c)return toast('Manzilni kiriting yoki xaritadan tanlang');
   $('ord').disabled=true;
-  const r=await api('/orders',{items:L.map(l=>({id:l.p.id,qty:l.n})),type:ctype,address,slot:$('csl').value,tel:$('ctel').value,comment:$('ccm').value});
+  const r=await api('/orders',{items:L.map(l=>({id:l.p.id,qty:l.n})),type:ctype,address,lat:geo.c&&geo.c.lat,lng:geo.c&&geo.c.lng,slot:$('csl').value,tel:$('ctel').value,comment:$('ccm').value});
   $('ord').disabled=false;
-  if(r.j.ok){cart={};sv();ls('am_ad',address);ls('am_tel',$('ctel').value);$('ccm').value='';closeAll();toast('✅ Buyurtma '+r.j.num+' qabul qilindi');go('ord')}
+  if(r.j.ok){cart={};geo.c=null;setGeoLbl('c');sv();ls('am_ad',address);ls('am_tel',$('ctel').value);$('ccm').value='';closeAll();toast('✅ Buyurtma '+r.j.num+' qabul qilindi');go('ord')}
   else toast(r.j.error||'Xatolik');
 };
 
@@ -215,9 +233,9 @@ function openProd(id,keep){
 /* ---------- yozib yuborish ---------- */
 $('rs').onclick=async()=>{
   const text=$('rt').value.trim(),address=$('ra').value.trim();
-  if(text.length<3)return toast('Kerakli narsalarni yozing');if(!address)return toast('Manzilni kiriting');
-  $('rs').disabled=true;const r=await api('/requests',{text,address,tel:$('rp').value});$('rs').disabled=false;
-  if(r.j.ok){$('rt').value='';ls('am_ad',address);ls('am_tel',$('rp').value);toast("✅ So'rov "+r.j.num+' sotuvchiga yuborildi');go('ord')}else toast(r.j.error||'Xatolik');
+  if(text.length<3)return toast('Kerakli narsalarni yozing');if(!address&&!geo.r)return toast('Manzilni kiriting yoki xaritadan tanlang');
+  $('rs').disabled=true;const r=await api('/requests',{text,address,lat:geo.r&&geo.r.lat,lng:geo.r&&geo.r.lng,tel:$('rp').value});$('rs').disabled=false;
+  if(r.j.ok){$('rt').value='';geo.r=null;setGeoLbl('r');ls('am_ad',address);ls('am_tel',$('rp').value);toast("✅ So'rov "+r.j.num+' sotuvchiga yuborildi');go('ord')}else toast(r.j.error||'Xatolik');
 };
 
 /* ---------- buyurtmalar ---------- */
@@ -227,14 +245,16 @@ const dt=ms=>{const d=new Date(ms),p=n=>String(n).padStart(2,'0');return p(d.get
 function renderOrders(){
   const h=orders.map(o=>{
     const s=SL[o.status]||SL.new,idx=FL.indexOf(o.status),fin=o.status==='done'||o.status==='cancelled';
-    const body=o.kind==='request'?`<div style="white-space:pre-wrap">📝 ${esc(o.text)}</div><div class="mu">Narxni sotuvchi siz bilan kelishadi</div>`:
+    const body=o.kind==='request'?`<div style="white-space:pre-wrap">📝 ${esc(o.text)}</div>${o.quote?'':'<div class="mu">Narxni sotuvchi siz bilan kelishadi</div>'}`:
       o.items.map(i=>`<div class="row"><span>${esc(i.name)} × ${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')+`<div class="row"><b>Jami</b><b>${fmt(o.total)}</b></div>`;
+    const qt=o.quote?`<div style="margin-top:8px;padding:10px;border-radius:10px;background:rgba(255,122,24,.14)"><b>💰 Jami: ${fmt(o.quote.amount)}</b>${o.quote.note?'<br>'+esc(o.quote.note):''}</div>`:'';
+    const gl=o.geo?`<br>🗺 <a href="https://yandex.com/maps/?pt=${o.geo.lng},${o.geo.lat}&amp;z=17&amp;l=map" target="_blank" rel="noopener">Yandex</a> · <a href="https://maps.google.com/?q=${o.geo.lat},${o.geo.lng}" target="_blank" rel="noopener">Google</a>`:'';
     const info=o.type==='delivery'?`📍 ${esc(o.address)}<br>🕐 ${o.slot==='express'?'Tezkor':esc(o.slot)}`:'🏪 Olib ketish';
     return `<div class="box"><div style="display:flex;justify-content:space-between;align-items:center"><b>#${esc(o.id.slice(-5))}</b><span class="tag" style="background:${s[1]}">${s[0]}</span></div><div class="mu">${dt(o.at)}${owner?' · '+esc(o.tel)+' (+'+esc(o.phone)+')':''}</div>`+
       (o.status!=='cancelled'?`<div class="pg">${FL.map((x,k)=>`<i class="${k<=idx?'on':''}"></i>`).join('')}</div>`:'')+
-      `<div style="margin-top:6px">${body}</div><p class="mu" style="margin:8px 0 0">${info}${o.comment?'<br>💬 '+esc(o.comment):''}</p>`+
+      `<div style="margin-top:6px">${body}</div>${qt}<p class="mu" style="margin:8px 0 0">${info}${gl}${o.comment?'<br>💬 '+esc(o.comment):''}</p>`+
       (owner&&!fin?`<div class="acts"><a class="btn g" href="tel:${esc(o.tel)}">📞 Qo'ng'iroq</a><button class="btn" data-os="${esc(o.id)}:assembling">🧑‍🍳 Yig'ilmoqda</button><button class="btn" data-os="${esc(o.id)}:onway">🚚 Yo'lda</button><button class="btn" data-os="${esc(o.id)}:done">✅ Yetkazildi</button><button class="btn r" data-os="${esc(o.id)}:cancelled">❌ Bekor</button></div>`:'')+
-      (!owner&&o.status==='new'?`<div class="acts"><button class="btn r" data-oc="${esc(o.id)}">Bekor qilish</button></div>`:'')+`</div>`}).join('');
+      (owner&&o.status!=='cancelled'?`<div class="acts" style="align-items:center"><input class="qi" data-qa="${esc(o.id)}" inputmode="numeric" placeholder="Jami summa (so'm)" value="${o.quote?o.quote.amount:''}"><input class="qi" data-qn="${esc(o.id)}" placeholder="Izoh (ixtiyoriy)" value="${o.quote?esc(o.quote.note):''}"><button class="btn o" data-oq="${esc(o.id)}">💰 Narxni yuborish</button></div>`:'')+(!owner&&o.status==='new'?`<div class="acts"><button class="btn r" data-oc="${esc(o.id)}">Bekor qilish</button></div>`:'')+`</div>`}).join('');
   $('v-ord').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0">${owner?'Barcha buyurtmalar':'Buyurtmalarim'}</h3><button class="btn g" data-rf="1">⟳ Yangilash</button></div>`+(h||'<div class="empty">Hozircha buyurtma yo\'q</div>');
 }
 function renderMe(){
@@ -251,6 +271,10 @@ function closeAll(){document.querySelectorAll('.sh').forEach(s=>s.classList.remo
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.v)};
 document.addEventListener('click',async e=>{
   const t=e.target,d=t.dataset||{};
+  if(t.id==='mapS'){$('mapS').classList.remove('on');return}
+  if(d.map)openMap(d.map);
+  if(d.oq){const a=document.querySelector('[data-qa="'+d.oq+'"]').value.replace(/\D/g,''),n=document.querySelector('[data-qn="'+d.oq+'"]').value;
+    if(a==='')return toast('Summani kiriting');const r=await api('/orders/quote',{id:d.oq,amount:a,note:n});toast(r.j.ok?'Narx mijozga yuborildi':(r.j.error||'Xatolik'));if(r.j.ok)loadOrders()}
   if(d.c){cat=d.c;renderGrid()}
   if(d.r){$('q').value=d.r;renderGrid()}
   if(d.a){cart[d.a]=(cart[d.a]||0)+1;sv();cartUI()}
@@ -281,6 +305,43 @@ $('save').onclick=async()=>{
   if(r.j.ok){['n','p','c','d'].forEach(k=>$(k).value='');imgBlob=null;$('f').value='';$('pv').style.display='none';closeAll();toast("Qo'shildi");load()}
   else toast(r.j.error||'Xatolik');
 };
+
+/* ---------- xarita (OpenStreetMap) ---------- */
+const W2=z=>256*Math.pow(2,z);
+const px=(lat,lng,z)=>{const s=W2(z),r=lat*Math.PI/180;return[(lng+180)/360*s,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*s]};
+const ll=(x,y,z)=>{const s=W2(z),n=Math.PI-2*Math.PI*y/s;return[180/Math.PI*Math.atan(Math.sinh(n)),x/s*360-180]};
+const tiles={};let drag=null,gt=0;
+function drawMap(){
+  const el=$('mp'),W=el.clientWidth,H=el.clientHeight,z=MS.z,n=Math.pow(2,z),c=px(MS.lat,MS.lng,z),need={};
+  for(let tx=Math.floor((c[0]-W/2)/256);tx<=Math.floor((c[0]+W/2)/256);tx++)for(let ty=Math.floor((c[1]-H/2)/256);ty<=Math.floor((c[1]+H/2)/256);ty++){
+    if(ty<0||ty>=n)continue;
+    const wx=((tx%n)+n)%n,k=z+'/'+tx+'/'+ty;need[k]=1;
+    let im=tiles[k];if(!im){im=tiles[k]=document.createElement('img');im.alt='';im.draggable=false;im.src='https://tile.openstreetmap.org/'+z+'/'+wx+'/'+ty+'.png';el.appendChild(im)}
+    im.style.transform='translate('+Math.round(tx*256-(c[0]-W/2))+'px,'+Math.round(ty*256-(c[1]-H/2))+'px)';
+  }
+  for(const k in tiles)if(!need[k]){tiles[k].remove();delete tiles[k]}
+}
+const mp=$('mp');
+mp.onpointerdown=e=>{try{mp.setPointerCapture(e.pointerId)}catch(x){}drag={x:e.clientX,y:e.clientY,t:Date.now(),c:px(MS.lat,MS.lng,MS.z)}};
+mp.onpointermove=e=>{if(!drag)return;const r=ll(drag.c[0]-(e.clientX-drag.x),drag.c[1]-(e.clientY-drag.y),MS.z);MS.lat=Math.max(-80,Math.min(80,r[0]));MS.lng=r[1];drawMap()};
+mp.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;
+  if(Math.hypot(e.clientX-d.x,e.clientY-d.y)<6&&Date.now()-d.t<500){const b=mp.getBoundingClientRect(),c=px(MS.lat,MS.lng,MS.z),r=ll(c[0]+(e.clientX-b.left-b.width/2),c[1]+(e.clientY-b.top-b.height/2),MS.z);MS.lat=r[0];MS.lng=r[1];drawMap()}
+  describe()};
+mp.onpointercancel=()=>{drag=null};
+function describe(){const t=++gt;$('mad').textContent='📍 Manzil aniqlanmoqda…';clearTimeout(describe.h);
+  describe.h=setTimeout(async()=>{const r=await api('/geo?lat='+MS.lat.toFixed(6)+'&lng='+MS.lng.toFixed(6));if(t!==gt)return;
+    MS.addr=r.j.ok?(r.j.address||''):'';$('mad').textContent=r.j.ok?(MS.addr||"Manzil nomi topilmadi, lekin nuqta saqlanadi"):(r.j.error||'Xatolik')},700)}
+$('mz1').onclick=()=>{MS.z=Math.min(18,MS.z+1);drawMap();describe()};
+$('mz2').onclick=()=>{MS.z=Math.max(6,MS.z-1);drawMap();describe()};
+$('mloc').onclick=()=>{if(!navigator.geolocation)return toast("Joylashuv aniqlanmadi");toast('Joylashuv aniqlanmoqda…');
+  navigator.geolocation.getCurrentPosition(p=>{MS.lat=p.coords.latitude;MS.lng=p.coords.longitude;MS.z=17;drawMap();describe()},()=>toast("Joylashuvga ruxsat bering: Sozlamalar → Safari → Joylashuv"),{enableHighAccuracy:true,timeout:10000})};
+function setGeoLbl(t){$(t==='c'?'gc':'gr').textContent=geo[t]?'✅ Joy belgilangan':''}
+function openMap(t){mapT=t;const g=geo[t];if(g){MS.lat=g.lat;MS.lng=g.lng;MS.z=17}$('mapS').classList.add('on');setTimeout(()=>{drawMap();describe()},80)}
+$('mok').onclick=()=>{geo[mapT]={lat:+MS.lat.toFixed(6),lng:+MS.lng.toFixed(6)};const inp=$(mapT==='c'?'cad':'ra');
+  if(MS.addr&&inp.dataset.auto!=='0'){inp.value=MS.addr;inp.dataset.auto='1'}
+  setGeoLbl(mapT);$('mapS').classList.remove('on');toast("📍 Joy belgilandi. Uy/kvartira raqamini manzilga qo'shing")};
+$('mcn').onclick=()=>$('mapS').classList.remove('on');
+$('cad').oninput=()=>{$('cad').dataset.auto='0'};$('ra').oninput=()=>{$('ra').dataset.auto='0'};
 setInterval(()=>{if(tok&&!document.hidden&&(view==='ord'||$('obd').hidden===false))loadOrders(true)},15000);
 tok?load():showLogin();
 </script></body></html>
